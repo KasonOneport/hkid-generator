@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valid HKID Generator</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        .btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 20px;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .results {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .hkid-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f9fafb;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-family: ui-monospace, monospace;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+        .copy-btn {
+            background-color: #e5e7eb;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: #4b5563;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #d1d5db;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>HKID Generator</h2>
+    <button class="btn" onclick="generateBatch(10)">Generate 10 HKIDs</button>
+    <div id="results" class="results">
+        <!-- Generated HKIDs will appear here -->
+    </div>
+</div>
+
+<script>
+    function generateSingleHKID() {
+        const HKID_WEIGHTS = [9, 8, 7, 6, 5, 4, 3, 2];
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        
+        // 1. Randomly decide if prefix is 1 or 2 letters
+        const isTwoLetters = Math.random() > 0.5;
+        const prefixLength = isTwoLetters ? 2 : 1;
+        
+        let prefix = "";
+        for (let i = 0; i < prefixLength; i++) {
+            prefix += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+        }
+
+        // 2. Generate 6 random digits
+        let digits = "";
+        for (let i = 0; i < 6; i++) {
+            digits += Math.floor(Math.random() * 10).toString();
+        }
+
+        // 3. Format the array identically to the validator
+        let charactersToWeigh;
+        if (prefix.length === 2) {
+            charactersToWeigh = [...prefix.split(''), ...digits.split('')];
+        } else {
+            charactersToWeigh = [' ', prefix, ...digits.split('')];
+        }
+
+        // 4. Calculate Checksum
+        const sum = charactersToWeigh.reduce((acc, char, index) => {
+            let charVal;
+            if (char === ' ') {
+                charVal = 36;
+            } else if (isNaN(Number(char))) {
+                charVal = char.toUpperCase().charCodeAt(0) - 55;
+            } else {
+                charVal = Number(char);
+            }
+            return acc + charVal * HKID_WEIGHTS[index];
+        }, 0);
+
+        // 5. Determine the Check Digit
+        const remainder = sum % 11;
+        let expectedCheckDigit;
+        
+        if (remainder === 0) {
+            expectedCheckDigit = '0';
+        } else if (remainder === 1) {
+            expectedCheckDigit = 'A';
+        } else {
+            expectedCheckDigit = (11 - remainder).toString();
+        }
+
+        // 6. Return formatted HKID without the brackets!
+        return `${prefix}${digits}${expectedCheckDigit}`;
+    }
+
+    // Function to render the list to the DOM
+    function generateBatch(count) {
+        const resultsContainer = document.getElementById('results');
+        resultsContainer.innerHTML = ''; // Clear previous results
+
+        for (let i = 0; i < count; i++) {
+            const hkid = generateSingleHKID();
+            
+            const row = document.createElement('div');
+            row.className = 'hkid-row';
+            
+            const textSpan = document.createElement('span');
+            textSpan.textContent = hkid;
+            
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.textContent = 'Copy';
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(hkid);
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+            };
+
+            row.appendChild(textSpan);
+            row.appendChild(copyBtn);
+            resultsContainer.appendChild(row);
+        }
+    }
+
+    // Generate initially on page load
+    generateBatch(10);
+</script>
+
+</body>
+</html>
